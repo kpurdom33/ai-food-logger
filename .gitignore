@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+.streamlit/secrets.toml
+food_log.csv
+usda_data/
+usda_sr_legacy/
+usda_test.py
+tiny_ai.py
