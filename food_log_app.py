@@ -42,8 +42,6 @@ with st.form("quick_food_form"):
 
 if calculate_submitted:
 
-
-
     parsed = parse_food_input(quick_entry)
 
     if parsed:
@@ -57,19 +55,65 @@ if calculate_submitted:
 
         if result:
 
-            st.session_state["food"] = result["food"]
-            st.session_state["amount"] = parsed_amount
-            st.session_state["unit"] = parsed_unit
-            st.session_state["calories"] = result["calories"]
-            st.session_state["protein"] = result["protein_g"]
+            confidence = result["confidence"]
 
-            st.rerun()
+            if confidence >= 90:
+
+                st.session_state["food"] = result["food"]
+                st.session_state["amount"] = parsed_amount
+                st.session_state["unit"] = parsed_unit
+                st.session_state["calories"] = result["calories"]
+                st.session_state["protein"] = result["protein_g"]
+
+                st.session_state.pop("suggested_food", None)
+
+                st.rerun()
+
+            elif confidence >= 70:
+
+                st.session_state["suggested_food"] = {
+                    "result": result,
+                    "amount": parsed_amount,
+                    "unit": parsed_unit
+                }
+
+            else:
+
+                st.session_state.pop("suggested_food", None)
+
+                st.warning(
+                    f"No confident match found. "
+                    f"Closest match was {result['food']} "
+                    f"({confidence:.0f}% confidence)."
+                )
 
         else:
             st.error("I recognized the food, but couldn't understand the unit.")
 
     else:
         st.error("I couldn't understand that entry.")
+
+if "suggested_food" in st.session_state:
+
+    suggestion = st.session_state["suggested_food"]
+    result = suggestion["result"]
+
+    st.info(
+        f"Did you mean {result['food']}? "
+        f"({result['confidence']:.0f}% confidence)"
+    )
+
+    if st.button("Use Suggested Match"):
+
+        st.session_state["food"] = result["food"]
+        st.session_state["amount"] = suggestion["amount"]
+        st.session_state["unit"] = suggestion["unit"]
+        st.session_state["calories"] = result["calories"]
+        st.session_state["protein"] = result["protein_g"]
+
+        del st.session_state["suggested_food"]
+
+        st.rerun()
 
 with st.form("food_form"):
 
