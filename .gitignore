@@ -8,3 +8,14 @@ usda_data/
 usda_sr_legacy/
 usda_test.py
 tiny_ai.py
+# Local food database backups
+food_units_backup.csv
+foods_master_backup.csv
+foods_master_old_usda.csv
+
+# Generated USDA intermediate files
+usda_app_foods.csv
+usda_app_foods_v2.csv
+usda_selected_foods.csv
+usda_selected_foods_v2.csv
+usda_review_needed.csv

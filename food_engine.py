@@ -109,16 +109,71 @@ def calculate_food(search_term, amount, unit):
 
 def parse_food_input(user_input):
 
-    pattern = r"^\s*(\d*\.?\d+)\s*([a-zA-Z]+)\s+(.+)$"
+    user_input = user_input.strip()
 
-    match = re.match(pattern, user_input)
+    # Get amount + everything after it
+    match = re.match(
+        r"^\s*(\d*\.?\d+)\s+(.+)$",
+        user_input
+    )
 
     if not match:
         return None
 
     amount = float(match.group(1))
-    unit = match.group(2)
-    food_name = match.group(3)
+    remainder = match.group(2).strip()
+
+    words = remainder.split()
+
+    if not words:
+        return None
+
+
+    # Build a list of units the app knows
+    known_units = {
+        "g", "gram", "grams",
+        "oz", "ounce", "ounces",
+        "lb", "lbs", "pound", "pounds"
+    }
+
+    for _, row in food_units.iterrows():
+
+        known_units.add(
+            str(row["unit_name"]).lower().strip()
+        )
+
+        aliases = str(
+            row["unit_aliases"]
+        ).split("|")
+
+        for alias in aliases:
+            known_units.add(
+                alias.lower().strip()
+            )
+
+
+    # Example:
+    # 1 cup greek yogurt
+    # 1 tbsp peanut butter
+    # 1 medium banana
+    if len(words) >= 2:
+
+        possible_unit = words[0].lower()
+
+        if possible_unit in known_units:
+
+            unit = words[0]
+            food_name = " ".join(words[1:])
+
+            return amount, unit, food_name
+
+
+    # Count-style foods:
+    # 2 eggs
+    # 1 tortilla
+    # 1 corn tortilla
+    food_name = remainder
+
+    unit = words[-1]
 
     return amount, unit, food_name
-
