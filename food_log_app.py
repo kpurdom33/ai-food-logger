@@ -31,12 +31,18 @@ st.title("Kirby's Food Log")
 
 st.subheader("Quick Food Entry")
 
-quick_entry = st.text_input(
-    "Enter food",
-    placeholder="Example: 6 oz chikn breast"
-)
+with st.form("quick_food_form"):
 
-if st.button("Calculate Food"):
+    quick_entry = st.text_input(
+        "Enter food",
+        placeholder="Example: 6 oz chikn breast"
+    )
+
+    calculate_submitted = st.form_submit_button("Calculate Food")
+
+if calculate_submitted:
+
+
 
     parsed = parse_food_input(quick_entry)
 
