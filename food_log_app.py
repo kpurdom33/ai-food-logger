@@ -44,27 +44,6 @@ def reset_demo():
     ):
         st.session_state.pop(key, None)
 
-def load_example_meal():
-    now = datetime.now()
-    rows = []
-    for food_name, amount in (
-        ("Chicken Breast Cooked", 100.0),
-        ("White Rice Cooked", 150.0),
-        ("Broccoli Cooked", 100.0),
-    ):
-        result = calculate_food(food_name, amount, "g")
-        rows.append({
-            "timestamp": now.strftime("%Y-%m-%d %H:%M:%S"),
-            "date": now.strftime("%Y-%m-%d"),
-            "food": result["food"],
-            "amount": amount,
-            "unit": "g",
-            "calories": result["calories"],
-            "protein_g": result["protein_g"],
-        })
-    reset_demo()
-    save_food_log(pd.DataFrame(rows, columns=COLUMNS))
-
 def use_calculated_food(result, amount, unit):
     st.session_state["calculated_food"] = result["food"]
     st.session_state["manual_nutrition"] = False
@@ -78,14 +57,10 @@ st.title("Kirby's Food Log")
 
 if not CSV_STORAGE:
     st.caption("Demo: your log stays in this browser session and clears when you reload the page.")
-    sample_col, reset_col = st.columns(2)
-    if sample_col.button("Load example meal"):
-        load_example_meal()
-        st.success("Example meal loaded: chicken, rice, and broccoli.")
-    if reset_col.button("Reset demo"):
+    if st.button("Reset demo"):
         reset_demo()
         st.success("Demo reset. Your log and entry fields are empty.")
-    st.caption("Loading the example replaces your demo log. Reset demo clears the log and entry fields.")
+
 else:
     st.caption("Local mode: entries are saved to food_log.csv.")
 
@@ -99,13 +74,13 @@ col1.metric("Calories", round(today_df["calories"].sum()))
 col2.metric("Protein", f"{today_df['protein_g'].sum():.1f} g")
 
 st.subheader("Quick Food Entry")
-st.caption("Try 100 g chicken breast → calculate → adjust the portion → add food.")
+st.caption("Enter a food and quantity, calculate nutrition, then adjust your portion and add it to your log.")
 
 with st.form("quick_food_form"):
 
     quick_entry = st.text_input(
         "Enter food",
-        placeholder="Example: 100 g chicken breast",
+        placeholder="Enter quantity, unit, and food",
         key="quick_entry",
     )
 

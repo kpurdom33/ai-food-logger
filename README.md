@@ -18,8 +18,6 @@ The default is **demo mode**. Each browser session has its own in-memory log.
 The app never reads or writes `food_log.csv` in this mode. Refreshing the page,
 losing the session, or restarting the server clears the demo log.
 
-- **Load example meal** replaces the session log with chicken, rice, and broccoli,
-  calculated from the same food data used for normal entries.
 - **Reset demo** clears the session log, entry fields, and pending food matches.
 - Try `100 g chicken breast`, select **Calculate Food**, adjust the amount or unit,
   and select **Add Food**. Confirm suggested matches when prompted. Unsupported

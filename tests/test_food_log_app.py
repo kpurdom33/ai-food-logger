@@ -108,12 +108,12 @@ class FoodLogAppTests(unittest.TestCase):
         self.assertTrue(self.app.session_state["demo_food_log"].empty)
         self.calculate_chicken()
         self.click("Add Food")
-        self.click("Load example meal")
         self.click("Reset demo")
         self.assertEqual(csv_file.read_bytes(), original_contents)
 
     def test_demo_logs_are_isolated_between_sessions(self):
-        self.click("Load example meal")
+        self.calculate_chicken()
+        self.click("Add Food")
         first_session = self.app
         first_log = first_session.session_state["demo_food_log"].copy(deep=True)
         self.app = AppTest.from_file(str(PROJECT_ROOT / "food_log_app.py")).run()
@@ -126,26 +126,8 @@ class FoodLogAppTests(unittest.TestCase):
         pd.testing.assert_frame_equal(first_session.session_state["demo_food_log"], first_log)
         self.assertFalse(Path("food_log.csv").exists())
 
-    def test_example_meal_uses_calculated_values_and_replaces_existing_log(self):
-        from food_engine import calculate_food
-
-        self.calculate_chicken()
-        self.click("Add Food")
-        self.click("Load example meal")
-        sample = self.app.session_state["demo_food_log"].copy(deep=True)
-        self.assertEqual(len(sample), 3)
-        for row in sample.to_dict("records"):
-            result = calculate_food(row["food"], row["amount"], row["unit"])
-            self.assertEqual(row["calories"], result["calories"])
-            self.assertEqual(row["protein_g"], result["protein_g"])
-        self.assertEqual(self.app.metric[0].value, "385")
-        self.assertEqual(self.app.metric[1].value, "38.8 g")
-        self.click("Load example meal")
-        repeated_sample = self.app.session_state["demo_food_log"]
-        pd.testing.assert_frame_equal(
-            sample.drop(columns="timestamp"), repeated_sample.drop(columns="timestamp")
-        )
-        self.assertFalse(Path("food_log.csv").exists())
+    def test_demo_has_no_example_meal_button(self):
+        self.assertNotIn("Load example meal", [b.label for b in self.app.button])
 
     def test_reset_clears_log_and_all_entry_state(self):
         self.calculate_chicken()
