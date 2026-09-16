@@ -1,10 +1,12 @@
 import streamlit as st
 import pandas as pd
+import os
 from pathlib import Path
 from datetime import datetime
 from food_engine import parse_food_input, calculate_food
 
 DATA_FILE = Path("food_log.csv")
+CSV_STORAGE = os.environ.get("FOOD_LOG_STORAGE", "").strip().lower() == "csv"
 
 COLUMNS = [
     "timestamp",
@@ -17,13 +19,51 @@ COLUMNS = [
 ]
 
 def load_food_log():
+    if not CSV_STORAGE:
+        if "demo_food_log" not in st.session_state:
+            st.session_state["demo_food_log"] = pd.DataFrame(columns=COLUMNS)
+        return st.session_state["demo_food_log"]
+
     if DATA_FILE.exists():
         return pd.read_csv(DATA_FILE)
 
     return pd.DataFrame(columns=COLUMNS)
 
 def save_food_log(df):
-    df.to_csv(DATA_FILE, index=False)
+    if CSV_STORAGE:
+        df.to_csv(DATA_FILE, index=False)
+    else:
+        st.session_state["demo_food_log"] = df
+
+def reset_demo():
+    st.session_state["demo_food_log"] = pd.DataFrame(columns=COLUMNS)
+    # These controls run before the entry widgets are created on this rerun.
+    for key in (
+        "quick_entry", "suggested_food", "calculated_food", "manual_nutrition",
+        "food", "amount", "unit", "calories", "protein",
+    ):
+        st.session_state.pop(key, None)
+
+def load_example_meal():
+    now = datetime.now()
+    rows = []
+    for food_name, amount in (
+        ("Chicken Breast Cooked", 100.0),
+        ("White Rice Cooked", 150.0),
+        ("Broccoli Cooked", 100.0),
+    ):
+        result = calculate_food(food_name, amount, "g")
+        rows.append({
+            "timestamp": now.strftime("%Y-%m-%d %H:%M:%S"),
+            "date": now.strftime("%Y-%m-%d"),
+            "food": result["food"],
+            "amount": amount,
+            "unit": "g",
+            "calories": result["calories"],
+            "protein_g": result["protein_g"],
+        })
+    reset_demo()
+    save_food_log(pd.DataFrame(rows, columns=COLUMNS))
 
 def use_calculated_food(result, amount, unit):
     st.session_state["calculated_food"] = result["food"]
@@ -34,23 +74,47 @@ def use_calculated_food(result, amount, unit):
     st.session_state["calories"] = result["calories"]
     st.session_state["protein"] = result["protein_g"]
 
-df = load_food_log()
-
 st.title("Kirby's Food Log")
 
+if not CSV_STORAGE:
+    st.caption("Demo: your log stays in this browser session and clears when you reload the page.")
+    sample_col, reset_col = st.columns(2)
+    if sample_col.button("Load example meal"):
+        load_example_meal()
+        st.success("Example meal loaded: chicken, rice, and broccoli.")
+    if reset_col.button("Reset demo"):
+        reset_demo()
+        st.success("Demo reset. Your log and entry fields are empty.")
+    st.caption("Loading the example replaces your demo log. Reset demo clears the log and entry fields.")
+else:
+    st.caption("Local mode: entries are saved to food_log.csv.")
+
+df = load_food_log()
+today = datetime.now().strftime("%Y-%m-%d")
+today_df = df[df["date"] == today]
+
+st.subheader("Today's Totals")
+col1, col2 = st.columns(2)
+col1.metric("Calories", round(today_df["calories"].sum()))
+col2.metric("Protein", f"{today_df['protein_g'].sum():.1f} g")
+
 st.subheader("Quick Food Entry")
+st.caption("Try 100 g chicken breast → calculate → adjust the portion → add food.")
 
 with st.form("quick_food_form"):
 
     quick_entry = st.text_input(
         "Enter food",
-        placeholder="Example: 6 oz chikn breast"
+        placeholder="Example: 100 g chicken breast",
+        key="quick_entry",
     )
 
     calculate_submitted = st.form_submit_button("Calculate Food")
 
 if calculate_submitted:
 
+    # A new attempt invalidates any previous unconfirmed match, even if it fails.
+    st.session_state.pop("suggested_food", None)
     parsed = parse_food_input(quick_entry)
 
     if parsed:
@@ -201,29 +265,11 @@ if submitted and can_save:
 
     st.rerun()
 
-today = datetime.now().strftime("%Y-%m-%d")
-
-today_df = df[df["date"] == today]
-
-st.subheader("Today's Totals")
-
-col1, col2 = st.columns(2)
-
-col1.metric(
-    "Calories",
-    round(today_df["calories"].sum())
-)
-
-col2.metric(
-    "Protein",
-    f"{today_df['protein_g'].sum():.1f} g"
-)
-
 st.subheader("Today's Food")
 
 st.dataframe(
     today_df,
-    use_container_width=True,
+    width="stretch",
     hide_index=True
 )
 
@@ -231,6 +277,6 @@ st.subheader("Full Food History")
 
 st.dataframe(
     df,
-    use_container_width=True,
+    width="stretch",
     hide_index=True
 )
