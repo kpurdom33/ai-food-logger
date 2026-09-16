@@ -25,6 +25,15 @@ def load_food_log():
 def save_food_log(df):
     df.to_csv(DATA_FILE, index=False)
 
+def use_calculated_food(result, amount, unit):
+    st.session_state["calculated_food"] = result["food"]
+    st.session_state["manual_nutrition"] = False
+    st.session_state["food"] = result["food"]
+    st.session_state["amount"] = amount
+    st.session_state["unit"] = unit
+    st.session_state["calories"] = result["calories"]
+    st.session_state["protein"] = result["protein_g"]
+
 df = load_food_log()
 
 st.title("Kirby's Food Log")
@@ -59,11 +68,7 @@ if calculate_submitted:
 
             if confidence >= 90:
 
-                st.session_state["food"] = result["food"]
-                st.session_state["amount"] = parsed_amount
-                st.session_state["unit"] = parsed_unit
-                st.session_state["calories"] = result["calories"]
-                st.session_state["protein"] = result["protein_g"]
+                use_calculated_food(result, parsed_amount, parsed_unit)
 
                 st.session_state.pop("suggested_food", None)
 
@@ -105,51 +110,71 @@ if "suggested_food" in st.session_state:
 
     if st.button("Use Suggested Match"):
 
-        st.session_state["food"] = result["food"]
-        st.session_state["amount"] = suggestion["amount"]
-        st.session_state["unit"] = suggestion["unit"]
-        st.session_state["calories"] = result["calories"]
-        st.session_state["protein"] = result["protein_g"]
+        use_calculated_food(result, suggestion["amount"], suggestion["unit"])
 
         del st.session_state["suggested_food"]
 
         st.rerun()
 
-with st.form("food_form"):
+st.session_state.setdefault("manual_nutrition", True)
+manual_nutrition = st.checkbox(
+    "Enter nutrition manually",
+    key="manual_nutrition",
+    disabled="calculated_food" not in st.session_state,
+)
 
-    food = st.text_input("Food", key="food")
+if not manual_nutrition:
+    # Keep the confirmed identity attached to its nutrition data.
+    st.session_state["food"] = st.session_state["calculated_food"]
+    st.caption("Nutrition updates with your portion. Use Quick Food Entry to change foods.")
 
-    amount = st.number_input(
+food = st.text_input("Food", key="food", disabled=not manual_nutrition)
+
+st.session_state.setdefault("amount", 1.0)
+amount = st.number_input(
     "Amount",
     min_value=0.0,
-    value=1.0,
     step=1.0,
     key="amount"
 )
 
-    unit = st.text_input(
+unit = st.text_input(
     "Unit",
     placeholder="g, cup, serving, etc.",
     key="unit"
 )
 
-    calories = st.number_input(
+can_save = True
+if not manual_nutrition:
+    result = calculate_food(food, amount, unit)
+    if result is None:
+        can_save = False
+        st.session_state["calories"] = 0.0
+        st.session_state["protein"] = 0.0
+        st.error("That unit isn't supported for this food. Choose a supported unit, such as g or oz.")
+    else:
+        st.session_state["calories"] = result["calories"]
+        st.session_state["protein"] = result["protein_g"]
+
+calories = st.number_input(
     "Calories",
     min_value=0.0,
     step=10.0,
-    key="calories"
+    key="calories",
+    disabled=not manual_nutrition,
 )
 
-    protein = st.number_input(
+protein = st.number_input(
     "Protein (g)",
     min_value=0.0,
     step=1.0,
-    key="protein"
+    key="protein",
+    disabled=not manual_nutrition,
 )
 
-    submitted = st.form_submit_button("Add Food")
+submitted = st.button("Add Food", disabled=not can_save)
 
-if submitted:
+if submitted and can_save:
 
     now = datetime.now()
 
